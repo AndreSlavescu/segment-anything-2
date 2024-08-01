@@ -9,13 +9,10 @@ from typing import Optional
 import torch
 from torch import nn, Tensor
 
-from sam2.modeling.sam.transformer import RoPEAttention, RMSNorm
-
+from sam2.modeling.sam.transformer import RoPEAttention, RMSNorm, RMSNorm
 from sam2.modeling.sam2_utils import get_activation_fn, get_clones
 
-
 class MemoryAttentionLayer(nn.Module):
-
     def __init__(
         self,
         activation: str,

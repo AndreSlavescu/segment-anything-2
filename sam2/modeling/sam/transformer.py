@@ -24,14 +24,14 @@ OLD_GPU, USE_FLASH_ATTN, MATH_KERNEL_ON = get_sdpa_settings()
 # RMSNorm as substitute for LayerNorm
 class RMSNorm(nn.Module):
     def __init__(self, d_model, eps=1e-6):
-        super().__init__()
+        super(RMSNorm, self).__init__()
+        self.weight = nn.Parameter(torch.ones(d_model))
+        self.bias = nn.Parameter(torch.ones(d_model))
         self.eps = eps
-        self.scale = nn.Parameter(torch.ones(d_model))
 
-    @torch.compile(mode="reduce-overhead")
     def forward(self, x):
         rms = torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
-        return x * rms * self.scale
+        return x * rms * self.weight + self.bias
 
 class TwoWayTransformer(nn.Module):
     def __init__(
