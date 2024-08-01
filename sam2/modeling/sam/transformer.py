@@ -21,6 +21,17 @@ from sam2.utils.misc import get_sdpa_settings
 warnings.simplefilter(action="ignore", category=FutureWarning)
 OLD_GPU, USE_FLASH_ATTN, MATH_KERNEL_ON = get_sdpa_settings()
 
+# RMSNorm as substitute for LayerNorm
+class RMSNorm(nn.Module):
+    def __init__(self, d_model, eps=1e-6):
+        super().__init__()
+        self.eps = eps
+        self.scale = nn.Parameter(torch.ones(d_model))
+
+    @torch.compile(mode="reduce-overhead")
+    def forward(self, x):
+        rms = torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
+        return x * rms * self.scale
 
 class TwoWayTransformer(nn.Module):
     def __init__(
@@ -66,7 +77,7 @@ class TwoWayTransformer(nn.Module):
         self.final_attn_token_to_image = Attention(
             embedding_dim, num_heads, downsample_rate=attention_downsample_rate
         )
-        self.norm_final_attn = nn.LayerNorm(embedding_dim)
+        self.norm_final_attn = RMSNorm(embedding_dim)
 
     def forward(
         self,
@@ -96,7 +107,7 @@ class TwoWayTransformer(nn.Module):
         queries = point_embedding
         keys = image_embedding
 
-        # Apply transformer blocks and final layernorm
+        # Apply transformer blocks and final rms norm
         for layer in self.layers:
             queries, keys = layer(
                 queries=queries,
@@ -140,19 +151,19 @@ class TwoWayAttentionBlock(nn.Module):
         """
         super().__init__()
         self.self_attn = Attention(embedding_dim, num_heads)
-        self.norm1 = nn.LayerNorm(embedding_dim)
+        self.norm1 = RMSNorm(embedding_dim)
 
         self.cross_attn_token_to_image = Attention(
             embedding_dim, num_heads, downsample_rate=attention_downsample_rate
         )
-        self.norm2 = nn.LayerNorm(embedding_dim)
+        self.norm2 = RMSNorm(embedding_dim)
 
         self.mlp = MLP(
             embedding_dim, mlp_dim, embedding_dim, num_layers=2, activation=activation
         )
-        self.norm3 = nn.LayerNorm(embedding_dim)
+        self.norm3 = RMSNorm(embedding_dim)
 
-        self.norm4 = nn.LayerNorm(embedding_dim)
+        self.norm4 = RMSNorm(embedding_dim)
         self.cross_attn_image_to_token = Attention(
             embedding_dim, num_heads, downsample_rate=attention_downsample_rate
         )

@@ -9,7 +9,7 @@ from typing import Optional
 import torch
 from torch import nn, Tensor
 
-from sam2.modeling.sam.transformer import RoPEAttention
+from sam2.modeling.sam.transformer import RoPEAttention, RMSNorm
 
 from sam2.modeling.sam2_utils import get_activation_fn, get_clones
 
@@ -40,9 +40,9 @@ class MemoryAttentionLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.linear2 = nn.Linear(dim_feedforward, d_model)
 
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
-        self.norm3 = nn.LayerNorm(d_model)
+        self.norm1 = RMSNorm(d_model)
+        self.norm2 = RMSNorm(d_model)
+        self.norm3 = RMSNorm(d_model)
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
         self.dropout3 = nn.Dropout(dropout)
@@ -112,7 +112,7 @@ class MemoryAttention(nn.Module):
         self.d_model = d_model
         self.layers = get_clones(layer, num_layers)
         self.num_layers = num_layers
-        self.norm = nn.LayerNorm(d_model)
+        self.norm = RMSNorm(d_model)
         self.pos_enc_at_input = pos_enc_at_input
         self.batch_first = batch_first
 
